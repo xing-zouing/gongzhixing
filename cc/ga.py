@@ -1,5 +1,5 @@
 import datetime
-from random import randint
+from random import randint, seed as random_seed
 import numpy as np
 from cc.eva import EvA
 
@@ -11,16 +11,22 @@ target = [1, 1, 1, 2, 2, 2, 3, 3, 3]
 
 # timy decorator for time measurement
 #@timy.timer(ident='ga_cc')
-def ga_cc(target, shape):
+def ga_cc(target, shape, max_iter=4000000, wanted_tmoc=0.2, random_state=None):
     '''
     (list, tuple) -> list
-    
-    Generic Algorithm for the Common-Centroid optimization 
-    
+
+    Generic Algorithm for the Common-Centroid optimization
+
     :param target: a list
-    :param shape: a tuple or a list with shape 
+    :param shape: a tuple or a list with shape
+    :param max_iter: maximum number of swap trials
+    :param wanted_tmoc: stop once the TMOC is below this value
+    :param random_state: optional seed for reproducible runs
     :return: a list
     '''
+
+    if random_state is not None:
+        random_seed(random_state)
 
     def get_fitness(guess, shape):
         '''
@@ -40,12 +46,15 @@ def ga_cc(target, shape):
         :param parent: list 
         :return: list
         '''
-        first = randint(0, len(parent) - 1)
-        second = randint(0, len(parent) - 1)
+        # Work on a copy: the previous version mutated the parent in place,
+        # so a rejected child silently corrupted the current best solution.
+        child = parent.copy()
+        first = randint(0, len(child) - 1)
+        second = randint(0, len(child) - 1)
         while first == second:
-            second = randint(0, len(parent) - 1)
-        parent[first], parent[second] = parent[second], parent[first]
-        return parent
+            second = randint(0, len(child) - 1)
+        child[first], child[second] = child[second], child[first]
+        return child
 
     def display(guess):
         '''
@@ -65,7 +74,7 @@ def ga_cc(target, shape):
     startTime = datetime.datetime.now()
 
     # best Parent is a target in the beginning
-    bestparent = target
+    bestparent = list(target)
 
     # check initial TMO coefficient
     bestFitness = EvA(np.array(target), shape)
@@ -79,10 +88,8 @@ def ga_cc(target, shape):
     # set up number of generations
     numberofgenerations = 0
 
-    # create min wanted TMO coefficient
-    wanted_tmoc = 0.2
     # TODO optimize bellow
-    while number_of_irr != 4000000:
+    while number_of_irr != max_iter:
         number_of_irr += 1
         child = mutate(bestparent)
 
@@ -92,10 +99,12 @@ def ga_cc(target, shape):
         if bestFitness <= childFitness:
             continue
         display(child)
-        if childFitness < wanted_tmoc:
-            break
+        # Save the improved child *before* the stop check, otherwise the
+        # solution that actually reaches wanted_tmoc is never returned.
         bestFitness = childFitness
         bestparent = child
+        if childFitness < wanted_tmoc:
+            break
     # TODO a new loop with lower wanted TMO coef.
     bestparent = np.array(bestparent)
 

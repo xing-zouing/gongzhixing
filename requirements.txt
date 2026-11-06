@@ -1,0 +1,7 @@
+# Common Centroid Algorithm - Python dependencies
+# Install into the project-local virtual environment:
+#   .venv/bin/pip install -r requirements.txt
+numpy==2.2.6
+timy==0.4.2
+gdspy==1.6.13
+matplotlib==3.10.9
